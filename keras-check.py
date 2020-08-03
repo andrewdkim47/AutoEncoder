@@ -1,70 +1,75 @@
+import keras
 from keras.layers import Input, Dense
 from keras.models import Model
-from keras.datasets import mnist
+from keras.callbacks import TensorBoard
 import numpy as np
-import matplotlib.pyplot as plt
+from tensorflow import set_random_seed
+import os
 
-# this is the size of our encoded respresentations
-encoding_dim = 32 # 32 floats -> compression of factor 24.5, assuming the input is 784 floats.
+# sets the random seed for the numpy random generator and tensorflow backend.
+def seedy(s):
+    np.random.seed(s)
+    set_random_seed(s)
 
-# this is our input placeholder
-input_img = Input(shape=(783,))
-# "encoded" is the encoded respresentation of the input
-encoded = Dense(encoding_dim, activation='relu')(input_img)
-# "decoded" is the lossy reconstruction of the input
-decoded = Dense(784, activation='sigmoid')(encoded)
+# define template for model
+class AutoEncoder:
+    def __init__(self, encoding_dim=3):
+        self.encoding_dim = encoding_dim # overall dimension that we are reducing our numbers down to.
+        r = lambda: np.random.randint(1,3)
+        self.x = np.array([[r(),r(), r()] for _ in range(1000)]) # create 1000 arrays of 3 random ints as training data
+        print(self.x)
 
-#this model maps an input to its reconstruction
-autoencoder = Model(input_img, decoded)
+    # encoder creates a neuron for each input
+    def _encoder(self):
+        inputs = Input(shape=(self.x[0].shape)) # we set the shape of our training example to the first training input we give it.
+        encoded = Dense(self.encoding_dim, activataion='relu')(inputs) # encoding_dim number of neurons
+        model = Model(inputs, encoded)
+        self.encoder = model
+        return model
 
-# this model maps an input to its encoded representation
-encoder = Model(input_img, encoded)
+    def _decoder(self):
+        inputs = Input(shape=(self.encoding_dim,))
+        decoded = Dense(3)(inputs)
+        model = Model(inputs, decoded)
+        self.decoder = model
+        return model
 
-# create a placeholder for an encoded (32-dimensional) input
-encoded_input = Input(shape=(encoding_dim,))
-# retrieve the last layer of the autoencoder model
-decoder_layer = autoencoder.layers[-1]
-# create the decoder model
-decoder = Model(encoded_input, decoder_layer(encoded_input))
+    # concatenate encoder and decoder
+    def encoder_decoder(self):
+        ec = self._encoder()
+        dc = self._decoder()
 
+        # combine both encoder and decoder models
+        inputs = Input(shape=self.x[0].shape)
+        ec_out = ec(inputs)
+        dc_out = dc(ec_out)
+        model = Model(inputs, dc_out)
 
+        self.model = model
+        return model
+    
+    # compiles top model using stochastic gradient descent.
+    def fit(self, batch_size = 10, epochs=300):
+        self.model.compile(optimizer='sgd', loss='mse')
+        log_dir = './log/'
+        # saves the loss to logs so we can visualize it later.
+        tbCallBack = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=True)
+        # input is self.x, and our target is self.x as well.
 
-autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
+        self.model.fit(self.x, self.x, epochs=epochs, batch_size=batch_size, callbacks=[tbCallBack])
 
-(x_train, _), (x_test, _) = mnist.load_data()
-x_train = x_train.astype('float32') / 255.
-x_test = x_test.astype('float32') / 255.
-x_train = x_train.reshape((len(x_train), np.prod(x_train.shape[1:])))
-x_test = x_test.reshape((len(x_test), np.prod(x_test.shape[1:])))
-print x_train.shape
-print x_test.shape
+    # saves the weight of our models. 
+    def save(self):
+        if not os.path.exists(r'./weights'):
+            os.mkdir(r'./weights')
+        else:
+            self.encoder.save(r'./weights/encoder_weights.h5')
+            self.decoder.save(r'./weights/decoder_weights.h5')
+            self.model.save(r'./weights/ae_weights.h5')
 
-autoencoder.fit(x_train, x_train,
-                epochs=50,
-                batch_size=256,
-                shuffle=True,
-                validation_data=(x_test, x_test))
-
-# encode and decode some digits
-# note that we take them from the *test* set
-encoded_imgs = encoder.predict(x_test)
-decoded_imgs = decoder.predict(encoded_imgs)
-
-
-n = 10  # how many digits we will display
-plt.figure(figsize=(20, 4))
-for i in range(n):
-    # display original
-    ax = plt.subplot(2, n, i + 1)
-    plt.imshow(x_test[i].reshape(28, 28))
-    plt.gray()
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
-
-    # display reconstruction
-    ax = plt.subplot(2, n, i + 1 + n)
-    plt.imshow(decoded_imgs[i].reshape(28, 28))
-    plt.gray()
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
-plt.show()
+if __name__ == '__main__':
+    seedy(2)
+    ae = AutoEncoder(encoding_dim=2)
+    ae.encoder_decoder()
+    ae.fit(batch_size=50, epochs=300) # one epoch is the whole process of going through the encoding and getting the loss.
+    ae.save()
