@@ -1,15 +1,17 @@
-import keras
-from keras.layers import Input, Dense
-from keras.models import Model
-from keras.callbacks import TensorBoard
+import tensorflow.keras
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.models import Model
+from tensorflow.keras.callbacks import TensorBoard
 import numpy as np
-from tensorflow import set_random_seed
+import tensorflow
+# from tensorflow import set_random_seed DONT NEED THIS FOR TENSORFLOW2.0
 import os
 
 # sets the random seed for the numpy random generator and tensorflow backend.
 def seedy(s):
     np.random.seed(s)
-    set_random_seed(s)
+    #set_random_seed(s)
+    tensorflow.random.set_seed(s)
 
 # define template for model
 class AutoEncoder:
@@ -22,7 +24,7 @@ class AutoEncoder:
     # encoder creates a neuron for each input
     def _encoder(self):
         inputs = Input(shape=(self.x[0].shape)) # we set the shape of our training example to the first training input we give it.
-        encoded = Dense(self.encoding_dim, activataion='relu')(inputs) # encoding_dim number of neurons
+        encoded = Dense(self.encoding_dim, activation='relu')(inputs) # encoding_dim number of neurons
         model = Model(inputs, encoded)
         self.encoder = model
         return model
@@ -51,9 +53,10 @@ class AutoEncoder:
     # compiles top model using stochastic gradient descent.
     def fit(self, batch_size = 10, epochs=300):
         self.model.compile(optimizer='sgd', loss='mse')
-        log_dir = './log/'
+        log_dir = '.\\log\\'
+        print(log_dir)
         # saves the loss to logs so we can visualize it later.
-        tbCallBack = keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=True)
+        tbCallBack = tensorflow.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=True)
         # input is self.x, and our target is self.x as well.
 
         self.model.fit(self.x, self.x, epochs=epochs, batch_size=batch_size, callbacks=[tbCallBack])
@@ -62,6 +65,7 @@ class AutoEncoder:
     def save(self):
         if not os.path.exists(r'./weights'):
             os.mkdir(r'./weights')
+            print("HELLO")
         else:
             self.encoder.save(r'./weights/encoder_weights.h5')
             self.decoder.save(r'./weights/decoder_weights.h5')

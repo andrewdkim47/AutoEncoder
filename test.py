@@ -1,5 +1,9 @@
-from keras.models import load_model
-import numpy as numpy
+from tensorflow.keras.models import load_model
+import numpy as np
+import os
+#  Just disables the warning, doesn't enable AVX/FMA
+# I can ignore this cuz i have a gpu
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 encoder = load_model(r'./weights/encoder_weights.h5')
 decoder = load_model(r'./weights/decoder_weights.h5')
