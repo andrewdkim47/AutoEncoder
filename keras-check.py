@@ -6,6 +6,9 @@ import numpy as np
 import tensorflow
 # from tensorflow import set_random_seed DONT NEED THIS FOR TENSORFLOW2.0
 import os
+#  Just disables the warning, doesn't enable AVX/FMA
+# I can ignore this cuz i have a gpu
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # sets the random seed for the numpy random generator and tensorflow backend.
 def seedy(s):
@@ -51,15 +54,21 @@ class AutoEncoder:
         return model
     
     # compiles top model using stochastic gradient descent.
-    def fit(self, batch_size = 10, epochs=300):
+    def fit(self, batch_size=10, epochs=300):
+        # mse == mean squared error
         self.model.compile(optimizer='sgd', loss='mse')
         log_dir = '.\\log\\'
         print(log_dir)
         # saves the loss to logs so we can visualize it later.
-        tbCallBack = tensorflow.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0, write_graph=True, write_images=True)
+        tbCallBack = tensorflow.keras.callbacks.TensorBoard(log_dir=log_dir,
+                                                            histogram_freq=0,
+                                                            write_graph=True,
+                                                            write_images=True)
         # input is self.x, and our target is self.x as well.
-
-        self.model.fit(self.x, self.x, epochs=epochs, batch_size=batch_size, callbacks=[tbCallBack])
+        self.model.fit(self.x, self.x,
+                       epochs=epochs,
+                       batch_size=batch_size,
+                       callbacks=[tbCallBack])
 
     # saves the weight of our models. 
     def save(self):
@@ -75,5 +84,6 @@ if __name__ == '__main__':
     seedy(2)
     ae = AutoEncoder(encoding_dim=2)
     ae.encoder_decoder()
+    # fit data set (input) to the Neural Network. 50 items at a time, 300 times total
     ae.fit(batch_size=50, epochs=300) # one epoch is the whole process of going through the encoding and getting the loss.
     ae.save()

@@ -16,3 +16,10 @@ One reason why they have attracted so much research and attention is because the
 
 encoding_dim of 3 means 
 
+Instructions:
+open up command prompt
+go to cd \PersonalProjects/autoencoder
+conda activate tensorflow
+python keras-check.py
+python test.py
+conda deactivate
